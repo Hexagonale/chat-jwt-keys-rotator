@@ -22,7 +22,7 @@ jobs:
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.DOCKER_REGISTRY_HOST }}
+          registry: ${{ vars.DOCKER_REGISTRY_HOST }}
           username: ${{ secrets.DOCKER_REGISTRY_USERNAME }}
           password: ${{ secrets.DOCKER_REGISTRY_TOKEN }}
 
@@ -30,8 +30,8 @@ jobs:
         uses: docker/build-push-action@v5.3.0
         with:
           push: true
-          tags: ${{ env.DOCKER_REGISTRY_HOST }}/jwt-keys-rotator:latest,${{ env.DOCKER_REGISTRY_HOST }}/jwt-keys-rotator:${{ github.ref }}
+          tags: ${{ vars.DOCKER_REGISTRY_HOST }}/jwt-keys-rotator:latest,${{ vars.DOCKER_REGISTRY_HOST }}/jwt-keys-rotator:${{ github.ref }}
 
       - name: Inspect
         run: |
-          docker buildx imagetools inspect ${{ env.DOCKER_REGISTRY_HOST }}/jwt-keys-rotator:latest
+          docker buildx imagetools inspect ${{ vars.DOCKER_REGISTRY_HOST }}/jwt-keys-rotator:latest
