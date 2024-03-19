@@ -1,5 +1,6 @@
-# Release a new version of the package
+# Release a new version of the image
 name: Release
+run-name: ${{ github.actor }} released ${{ github.event.inputs.version }}
 on:
   push:
     tags:
