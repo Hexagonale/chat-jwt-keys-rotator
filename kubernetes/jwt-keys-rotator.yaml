@@ -1,0 +1,103 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: jwt-keys
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jwt-keys-rotator
+  namespace: jwt-keys
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: jwt-keys-rotator
+  namespace: jwt-keys
+rules:
+  - apiGroups: ['']
+    resources: ['secrets']
+    resourceNames:
+      - jwt-keys
+    verbs: ['get', 'patch']
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jwt-keys-rotator
+  namespace: jwt-keys
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: jwt-keys-rotator
+subjects:
+  - kind: ServiceAccount
+    name: jwt-keys-rotator
+    namespace: jwt-keys
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: jwt-keys
+  namespace: jwt-keys
+type: Opaque
+data:
+  jwks.json: eyJrZXlzIjpbXX0=
+  private-key.pem: PGJhc2U2NC1lbmNvZGVkLXByaXZhdGUta2V5Pg==
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: jwt-keys-rotator
+  namespace: jwt-keys
+spec:
+  # Run every month
+  schedule: '0 0 1 * *'
+  failedJobsHistoryLimit: 1
+  successfulJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: jwt-keys-rotator
+          imagePullSecrets:
+            - name: docker-hexagonale
+          containers:
+            - name: jwt-keys-rotator
+              image: docker.hexagonale.net/jwt-keys-rotator:latest
+              imagePullPolicy: Always
+              resources:
+                requests:
+                  memory: '32Mi'
+                  cpu: '100m'
+                limits:
+                  memory: '64Mi'
+                  cpu: '200m'
+              env:
+                - name: JWKS_PATH
+                  value: /tmp/jwks.json
+                - name: NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.namespace
+                - name: SECRET_NAME
+                  value: jwt-keys
+                - name: MAX_KEYS
+                  value: '2'
+              volumeMounts:
+                - name: jwt-keys
+                  mountPath: /tmp
+                  readOnly: true
+          restartPolicy: OnFailure
+          volumes:
+            - name: jwt-keys
+              secret:
+                secretName: jwt-keys
+                items:
+                  - key: jwks.json
+                    path: jwks.json
