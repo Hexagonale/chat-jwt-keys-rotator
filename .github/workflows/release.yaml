@@ -1,6 +1,6 @@
 # Release a new version of the image
 name: Release
-run-name: ${{ github.actor }} released ${{ github.ref }}
+run-name: ${{ github.actor }} released ${{ github.ref_name }}
 on:
   push:
     tags:
@@ -30,7 +30,7 @@ jobs:
         uses: docker/build-push-action@v5.3.0
         with:
           push: true
-          tags: ${{ vars.DOCKER_REGISTRY_HOST }}/jwt-keys-rotator:latest,${{ vars.DOCKER_REGISTRY_HOST }}/jwt-keys-rotator:${{ github.ref }}
+          tags: ${{ vars.DOCKER_REGISTRY_HOST }}/jwt-keys-rotator:latest,${{ vars.DOCKER_REGISTRY_HOST }}/jwt-keys-rotator:${{ github.ref_name }}
 
       - name: Inspect
         run: |
