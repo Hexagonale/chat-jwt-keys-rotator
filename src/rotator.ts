@@ -1,4 +1,3 @@
-import fs from 'fs/promises';
 import crypto from 'crypto';
 import * as k8s from '@kubernetes/client-node';
 import { JSONWebKeySet, JWK, exportJWK } from 'jose';
@@ -9,14 +8,20 @@ export const rotatorFactory = (config: Config) => {
 	const logger = new Logger('rotator');
 
 	const kc = new k8s.KubeConfig();
-	// kc.loadFromCluster();
-	kc.loadFromDefault();
+	kc.loadFromCluster();
+
 	const k8sApi = kc.makeApiClient(k8s.CoreV1Api);
 
 	const readJwks = async () => {
-		const file = await fs.readFile(config.jwksPath, 'utf-8');
+		const response = await k8sApi.readNamespacedSecret(config.secretName, config.namespace);
+		const secret = response.body;
+		const encoded = secret.data?.['jwks.json'];
+		if (!encoded) {
+			throw new Error('JWKS not found in the secret.');
+		}
 
-		return JSON.parse(file) as JSONWebKeySet;
+		const raw = Buffer.from(encoded, 'base64').toString('utf-8');
+		return JSON.parse(raw) as JSONWebKeySet;
 	};
 
 	const getUniqueKeyId = () => {
