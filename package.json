@@ -5,8 +5,7 @@
 	"main": "src/main.ts",
 	"scripts": {
 		"build": "tsc",
-		"start": "node build/main.js",
-		"publish": "bash scripts/publish.sh"
+		"start": "node build/main.js"
 	},
 	"keywords": [],
 	"author": "Przemysław Kędzierski",
