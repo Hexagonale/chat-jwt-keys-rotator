@@ -33,6 +33,36 @@ export const rotatorFactory = (config: Config) => {
 		return `${random}${time}`;
 	};
 
+	const generateKeyPair = () => {
+		switch (config.keyAlgorithm) {
+			case 'rsa-2048':
+				return crypto.generateKeyPairSync('rsa', {
+					modulusLength: 2048,
+					publicKeyEncoding: { format: 'pem', type: 'spki' },
+					privateKeyEncoding: { format: 'pem', type: 'pkcs8' },
+				});
+
+			case 'rsa-4096':
+				return crypto.generateKeyPairSync('rsa', {
+					modulusLength: 4096,
+					publicKeyEncoding: { format: 'pem', type: 'spki' },
+					privateKeyEncoding: { format: 'pem', type: 'pkcs8' },
+				});
+
+			case 'ed25519':
+				return crypto.generateKeyPairSync('ed25519', {
+					publicKeyEncoding: { format: 'pem', type: 'spki' },
+					privateKeyEncoding: { format: 'pem', type: 'pkcs8' },
+				});
+
+			case 'ed448':
+				return crypto.generateKeyPairSync('ed448', {
+					publicKeyEncoding: { format: 'pem', type: 'spki' },
+					privateKeyEncoding: { format: 'pem', type: 'pkcs8' },
+				});
+		}
+	};
+
 	const generateJwk = async (keyId: string, keyPair: crypto.KeyPairSyncResult<string, string>) => {
 		const publicKey = crypto.createPublicKey(keyPair.publicKey);
 		const exported = await exportJWK(publicKey);
@@ -82,10 +112,9 @@ export const rotatorFactory = (config: Config) => {
 		const keyId = getUniqueKeyId();
 		logger.info('Generated new key ID', keyId);
 
-		const keyPair = crypto.generateKeyPairSync('ed448', {
-			privateKeyEncoding: { format: 'pem', type: 'pkcs8' },
-			publicKeyEncoding: { format: 'pem', type: 'spki' },
-		});
+		const keyPair = generateKeyPair();
+		logger.info('Generated new key pair');
+
 		const jwk = await generateJwk(keyId, keyPair);
 		logger.info('New JWK generated', { jwk });
 
