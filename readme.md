@@ -31,11 +31,12 @@ rules:
 ## Configuration
 
 Following environment variables can be set to configure the service:
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `NAMESPACE` | The namespace where the secrets are located | |
-| `SECRET_NAME` | The name of the secret | `jwt-keys` |
-| `MAX_KEYS` | The maximum number of keys to keep | `2` |
+| Variable | Description | Default | Possible values |
+|----------|-------------|---------|-----------------|
+| `NAMESPACE` | The namespace where the secrets are located | | Any non-empty string |
+| `SECRET_NAME` | The name of the secret | `jwt-keys` | Any non-empty string |
+| `MAX_KEYS` | The maximum number of keys to keep | `2` | Any integer greater than 0 |
+| `KEY_ALGORITHM` | The algorithm used for the keys | `ed25519` | `rsa-2048`, `rsa-4096`, `ed25519`, `ed448` |
 
 ## Usage
 
