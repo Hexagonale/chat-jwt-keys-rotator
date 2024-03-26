@@ -4,6 +4,12 @@ import { JSONWebKeySet, JWK, exportJWK } from 'jose';
 import { Logger } from './logger';
 import { Config } from './config';
 
+interface PrivateKeyManifest {
+	algorithm: string;
+	keyId: string;
+	content: string;
+}
+
 export const rotatorFactory = (config: Config) => {
 	const logger = new Logger('rotator');
 
@@ -11,6 +17,18 @@ export const rotatorFactory = (config: Config) => {
 	kc.loadFromCluster();
 
 	const k8sApi = kc.makeApiClient(k8s.CoreV1Api);
+
+	const algorithm = (() => {
+		switch (config.keysType) {
+			case 'rsa-2048':
+			case 'rsa-4096':
+				return 'RSA';
+
+			case 'ed25519':
+			case 'ed448':
+				return 'EdDSA';
+		}
+	})();
 
 	const readJwks = async () => {
 		const response = await k8sApi.readNamespacedSecret(config.secretName, config.namespace);
@@ -34,7 +52,7 @@ export const rotatorFactory = (config: Config) => {
 	};
 
 	const generateKeyPair = () => {
-		switch (config.keyAlgorithm) {
+		switch (config.keysType) {
 			case 'rsa-2048':
 				return crypto.generateKeyPairSync('rsa', {
 					modulusLength: 2048,
@@ -82,13 +100,13 @@ export const rotatorFactory = (config: Config) => {
 		};
 	};
 
-	const patchSecret = async (privateKey: string, jwks: JSONWebKeySet) => {
+	const patchSecret = async (privateKeyManifest: PrivateKeyManifest, jwks: JSONWebKeySet) => {
 		await k8sApi.patchNamespacedSecret(
 			config.secretName,
 			config.namespace,
 			{
 				stringData: {
-					'private-key.pem': privateKey,
+					'private-key-manifest.json': JSON.stringify(privateKeyManifest),
 					'jwks.json': JSON.stringify(jwks),
 				},
 			},
@@ -122,7 +140,13 @@ export const rotatorFactory = (config: Config) => {
 		logger.info('JWKS merged', newJwks);
 
 		try {
-			await patchSecret(keyPair.privateKey, newJwks);
+			const privateKeyManifest = {
+				algorithm,
+				keyId,
+				content: keyPair.privateKey,
+			};
+
+			await patchSecret(privateKeyManifest, newJwks);
 
 			logger.info('Secrets patched');
 		} catch (error) {
