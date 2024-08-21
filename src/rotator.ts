@@ -31,7 +31,26 @@ export const rotatorFactory = (config: Config) => {
 	})();
 
 	const readJwks = async () => {
-		const response = await k8sApi.readNamespacedSecret(config.secretName, config.namespace);
+		const response = await k8sApi.readNamespacedSecret(config.secretName, config.namespace).catch((error) => {
+			if (error instanceof k8s.HttpError && error.statusCode === 404) {
+				logger.info('Secret not found, creating a new one');
+
+				return k8sApi.createNamespacedSecret(config.namespace, {
+					apiVersion: 'v1',
+					kind: 'Secret',
+					metadata: {
+						name: config.secretName,
+					},
+					stringData: {
+						'private-key-manifest.json': '{}',
+						'jwks.json': '{ "keys": [] }',
+					},
+				});
+			}
+
+			throw error;
+		});
+
 		const secret = response.body;
 		const encoded = secret.data?.['jwks.json'];
 		if (!encoded) {
@@ -85,15 +104,31 @@ export const rotatorFactory = (config: Config) => {
 		const publicKey = crypto.createPublicKey(keyPair.publicKey);
 		const exported = await exportJWK(publicKey);
 
+		const alg = (() => {
+			switch (config.keysType) {
+				case 'rsa-2048':
+					return 'RS256';
+
+				case 'rsa-4096':
+					return 'RS512';
+
+				case 'ed25519':
+					return 'EdDSA';
+
+				case 'ed448':
+					return 'EdDSA';
+			}
+		})();
+
 		return {
 			...exported,
 			kid: keyId,
-			alg: 'EdDSA',
+			alg,
 		};
 	};
 
 	const mergeJwks = (existingJwks: JSONWebKeySet, newJwk: JWK): JSONWebKeySet => {
-		const updatedKeys = [...existingJwks.keys, newJwk];
+		const updatedKeys = [newJwk, ...existingJwks.keys];
 
 		return {
 			keys: updatedKeys.slice(0, config.maxKeys),
