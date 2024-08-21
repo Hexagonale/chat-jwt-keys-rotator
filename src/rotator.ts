@@ -128,7 +128,7 @@ export const rotatorFactory = (config: Config) => {
 	};
 
 	const mergeJwks = (existingJwks: JSONWebKeySet, newJwk: JWK): JSONWebKeySet => {
-		const updatedKeys = [...existingJwks.keys, newJwk];
+		const updatedKeys = [newJwk, ...existingJwks.keys];
 
 		return {
 			keys: updatedKeys.slice(0, config.maxKeys),
