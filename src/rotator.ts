@@ -104,10 +104,26 @@ export const rotatorFactory = (config: Config) => {
 		const publicKey = crypto.createPublicKey(keyPair.publicKey);
 		const exported = await exportJWK(publicKey);
 
+		const alg = (() => {
+			switch (config.keysType) {
+				case 'rsa-2048':
+					return 'RS256';
+
+				case 'rsa-4096':
+					return 'RS512';
+
+				case 'ed25519':
+					return 'EdDSA';
+
+				case 'ed448':
+					return 'EdDSA';
+			}
+		})();
+
 		return {
 			...exported,
 			kid: keyId,
-			alg: 'EdDSA',
+			alg,
 		};
 	};
 
