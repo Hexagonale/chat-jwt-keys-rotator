@@ -31,7 +31,26 @@ export const rotatorFactory = (config: Config) => {
 	})();
 
 	const readJwks = async () => {
-		const response = await k8sApi.readNamespacedSecret(config.secretName, config.namespace);
+		const response = await k8sApi.readNamespacedSecret(config.secretName, config.namespace).catch((error) => {
+			if (error instanceof k8s.HttpError && error.statusCode === 404) {
+				logger.info('Secret not found, creating a new one');
+
+				return k8sApi.createNamespacedSecret(config.namespace, {
+					apiVersion: 'v1',
+					kind: 'Secret',
+					metadata: {
+						name: config.secretName,
+					},
+					stringData: {
+						'private-key-manifest.json': '{}',
+						'jwks.json': '{ "keys": [] }',
+					},
+				});
+			}
+
+			throw error;
+		});
+
 		const secret = response.body;
 		const encoded = secret.data?.['jwks.json'];
 		if (!encoded) {
